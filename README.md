@@ -3,7 +3,7 @@ Fixes (mainly widescreen, HUD and framerate) for games created with the CPA game
 
 ## Installation
 Download the corresponding fix and follow the instructions in the included README.
-* Hype: The Time Quest
+* [Hype: The Time Quest](https://github.com/lukek19/CPAGameFixes/releases/tag/HypeV1.0)
 
 ## Other projects used for the fixes
 * [safetyhook](https://github.com/cursey/safetyhook) for mid-function hooking.
