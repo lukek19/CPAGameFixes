@@ -9,6 +9,7 @@
 // Variables declared in Hype.ini
 bool PatchFPSCap = false;
 bool centerHUD = false;
+bool removeBorders = false;
 uint32_t FPSValue = 50;
 uint32_t xRes = 640;
 uint32_t yRes = 480;
@@ -54,6 +55,7 @@ uint8_t* addressDrawMagicGauge;
 uint8_t* addressDrawText;
 uint8_t* addressDrawMap;
 uint8_t* addressDrawMap2;
+uint8_t* addressDrawHUD;
 
 // Declare hooks
 SafetyHookMid hook01{};
@@ -127,10 +129,10 @@ void Draw2DSpriteWithUVHookCentered(SafetyHookContext& ctx) {
 /* 2D sprites (stretched)
    Note: If the 2D sprite is rotated by +/- 90 degrees (+/- PI/2) then it gets stretched vertically
 	instead of horizontally. This hook un-stretches it verticallly and stretches it horizontally.
-	Fixes some menu side bars (e.g. escape menu & do-you-really-want-to-quit-the-game menu) */ 
+	Fixes some menu side bars (e.g. escape menu & do-you-really-want-to-quit-the-game menu) */
 void Draw2DSpriteWithUVHookStretched(SafetyHookContext& ctx) {
 	if (abs(*reinterpret_cast<float*>(ctx.esp + 0x28)) == 1.570796326794896f)
-	{	
+	{
 		float xShift = (*reinterpret_cast<float*>(ctx.esp + 0x0c) - *reinterpret_cast<float*>(ctx.esp + 0x08)) * (1.0f - 1.0f / ARScale) / 2.0f;
 		float yShift = (*reinterpret_cast<float*>(ctx.esp + 0x14) - *reinterpret_cast<float*>(ctx.esp + 0x10)) * (ARScale - 1.0f) / 2.0f;
 		*reinterpret_cast<float*>(ctx.esp + 0x08) = *reinterpret_cast<float*>(ctx.esp + 0x08) + xShift;
@@ -154,7 +156,7 @@ void UnStretchTextHook(SafetyHookContext& ctx) {
 }
 
 // This hook fixes the size of the map
-void MapSizeHook (SafetyHookContext& ctx) {
+void MapSizeHook(SafetyHookContext& ctx) {
 	*reinterpret_cast<int*>(ctx.esp + 0x08) = static_cast<int>(round(static_cast<float>(*reinterpret_cast<int*>(ctx.esp + 0x08)) * xScale));
 	*reinterpret_cast<int*>(ctx.esp + 0x10) = static_cast<int>(round(static_cast<float>(*reinterpret_cast<int*>(ctx.esp + 0x10)) * xScale));
 	*reinterpret_cast<int*>(ctx.esp + 0x18) = static_cast<int>(round(static_cast<float>(*reinterpret_cast<int*>(ctx.esp + 0x18)) * xScale));
@@ -178,7 +180,7 @@ void DetectGame(void)
 
 	IMAGE_DATA_DIRECTORY* pExpDir = &pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
 	IMAGE_EXPORT_DIRECTORY* pExports = (IMAGE_EXPORT_DIRECTORY*)(pBase + pExpDir->VirtualAddress);
-	if (!pExpDir->Size || !pExports->Name) 
+	if (!pExpDir->Size || !pExports->Name)
 		return;
 
 	char const* pName = (char*)(pBase + pExports->Name);
@@ -217,6 +219,7 @@ void DetectGame(void)
 		addressDrawText = reinterpret_cast<uint8_t*>(0x470340);
 		addressDrawMap = reinterpret_cast<uint8_t*>(0x4126a0);
 		addressDrawMap2 = reinterpret_cast<uint8_t*>(0x4fa260);
+		addressDrawHUD = reinterpret_cast<uint8_t*>(0x42f180);
 	}
 	// Spanish exe dated 1999-11-25 19:27:10 UTC
 	else if (!strcmp(pName, "MaiD3Dvr_bleu.exe") && (timestamp == 943558030)) {
@@ -252,6 +255,7 @@ void DetectGame(void)
 		addressDrawText = reinterpret_cast<uint8_t*>(0x470460);
 		addressDrawMap = reinterpret_cast<uint8_t*>(0x4127d0);
 		addressDrawMap2 = reinterpret_cast<uint8_t*>(0x4fa620);
+		addressDrawHUD = reinterpret_cast<uint8_t*>(0x42f3e0);
 	}
 }
 
@@ -271,6 +275,7 @@ void Configuration(void)
 	inipp::get_value(ini.sections["Resolution"], "xRes", xRes);
 	inipp::get_value(ini.sections["Resolution"], "yRes", yRes);
 	inipp::get_value(ini.sections["HUD"], "CenterHUDAndBackground", centerHUD);
+	inipp::get_value(ini.sections["HUD"], "RemoveHUDBorders", removeBorders);
 	inipp::get_value(ini.sections["FPS"], "TargetFPS", FPSValue);
 	inipp::get_value(ini.sections["FPS"], "PatchDeltaTiming", PatchFPSCap);
 	inipp::get_value(ini.sections["Other"], "RemoveCDCheck", doRemoveCDCheck);
@@ -365,8 +370,8 @@ void FixHUD(void)
 	hook03 = safetyhook::create_mid(addressSubtractLoadBarShift2, SubtractLoadBarShiftHook);
 	/* Patch coordinate transformation function
 	   Note: This fixes the positioning of
-		(a) the number of arrows (b) the amount of money when talking to a merchant (c) the magic gauge */ 
-	PatchBytes(addressTransformCoordinates +3 , "\xb8\x80\x02\x00\x00", 5);
+		(a) the number of arrows (b) the amount of money when talking to a merchant (c) the magic gauge */
+	PatchBytes(addressTransformCoordinates + 3, "\xb8\x80\x02\x00\x00", 5);
 	// Fix position of number of energy prisms during jewel charge
 	PatchBytes(addressDrawNumberOfEnergyPrisms + 3, "\xb8\x80\x02\x00\x00", 5);
 	// Fix position of text on inventory screen
@@ -394,13 +399,18 @@ void FixHUD(void)
 		hook06 = safetyhook::create_mid(addressDraw2DSpriteWithUV, Draw2DSpriteWithUVHookCentered);
 		// Center/un-stretch text
 		hook07 = safetyhook::create_mid(addressDrawText, UnStretchTextHook);
-		
-	} 
+
+	}
 	else {
 		// Fix rotated 2D sprites being vertically stretched
 		hook05 = safetyhook::create_mid(addressDraw2DSpriteWithUV, Draw2DSpriteWithUVHookStretched);
 		// Re-stretch magic gauge
 		hook06 = safetyhook::create_mid(addressDrawMagicGauge + 0xc3, MagicGaugeHookStretched);
+	}
+
+	if (removeBorders) {
+		// Remove grey borders around HUD elements
+		PatchBytes(addressDrawHUD, "\x90\x90\x90\x90\x90", 5);
 	}
 }
 
