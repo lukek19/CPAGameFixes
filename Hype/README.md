@@ -11,10 +11,9 @@
    - <ins>Spanish/Italian/Portuguese/Polish/Dutch</ins>: Version B.
    - <ins>Other languages</ins>: Either version A or version B is likely going to work. If you cannot start a new game or load a savegame, try the other version.
 6. Download [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (Win32 version of **dinput.dll**), and extract it to \<GameDir\>.
-7. Open \<GameDir\>\ubi.ini and change the line `Language=English` to `Language=XXX` (where XXX the same as in step 3). If you skip this step, there won't be any dialogue ingame.
-8. **Do not skip or the game will crash**: Open \<GameDir\>\GameData\Game.mem in a text editor and increase the values of both *TMPFixMemory* and *TMPLevelMemory*. Setting both to 25000000 should be sufficient to play the game at 1920x1080. For larger resolutions, higher values might be required.
-9. Set up a Direct3D wrapper. Instructions for either dgVoodoo or DDrawCompat can be found below.
-10. To change resolution or framerate, and for advanced options, edit \<GameDir\>\Hype.ini with a text editor.
+7. Open \<GameDir\>\ubi.ini and change the line `Language=English` to `Language=XXX` (where XXX the same as in step 3). If you skip this step, there won't be any dialogue in-game.
+8. Set up a Direct3D wrapper. Instructions for either dgVoodoo or DDrawCompat can be found below.
+9. To change resolution or framerate, and for advanced options, edit \<GameDir\>\Hype.ini with a text editor.
 
 ## Setup of Direct3D Wrapper
 
@@ -31,18 +30,36 @@
    - Now you should be able to Alt+Tab out of the game IF you toggle window mode first (by pressing Alt+Enter). Once are back in the game, you can press Alt+Enter again to go back to fake-fullscreen mode.
    
 ### DDrawCompat
-1. Download the latest realease of [DDrawCompat](https://github.com/narzoul/DDrawCompat/releases).
+1. Download the latest release of [DDrawCompat](https://github.com/narzoul/DDrawCompat/releases).
 2. Copy ddraw.dll to \<GameDir\>.
 3. (Optional) To be able to Alt+Tab out of the game, do the following:
-   - Download [DDrawCompat.ini](https://github.com/narzoul/DDrawCompat/blob/master/Tools/DDrawCompat.ini) and copy it to\<GameDir\>.
+   - Download [DDrawCompat.ini](https://github.com/narzoul/DDrawCompat/blob/master/Tools/DDrawCompat.ini) and copy it to \<GameDir\>.
    - Open DDrawCompat.ini with a text editor, uncomment (remove the #) the line starting with "AltTabFix" and change it to `AltTabFix = noactivateapp(1)`.
+
+## Using a game controller
+The game natively supports DirectInput devices. Simply set up the controls through the in-game "configure" menu.
+To use XInput devices, you can do the following:
+1. Download the latest version of [Xidi](https://github.com/samuelgr/Xidi/releases).
+2. Find the Win32 version of dinput.dll and rename it to dinputHooked.dll.
+3. Copy dinputHooked.dll to \<GameDir\>.
+
+## Known issues
+
+### Game asks for CD if no CD drive is detected
+At the moment, the `RemoveCDCheck` option only works when an optical disc drive (either physical or virtual) is detected. If your computer doesn't have a disc drive, simply mount an arbitrary iso image using the built-in Windows functionality.
+
+### Double inputs during main menu navigation
+This issue also occurs in the vanilla game, but is much more noticeable on high FPS. I have implemented a fix that you can activate by setting `FixDoubleInputs = true` in Hype.ini. Please note that this disables the in-game cheat codes.
+
+### Missing grey HUD border elements
+This seems to be an issue with version B (the non English version) of the game and is not related to the widescreen & FPS fix. On the bright side, I personally think that the HUD actually looks better in "centered" mode without these borders... that's why I added the `RemoveHUDBorders` option to the patch (works om both versions of the game, since version B still has parts of the grey borders left).
 
 ## FAQ / Troubleshooting
 
 ### The game crashes at startup
 The most common reasons for this are:
 - You are not using a DirectX wrapper (see above for instructions). When the game detects too much video memory, this causes an integer overflow resulting in an infinite loop at startup (the load bar hangs at around 50%). This also happens, if a very large amount of VRAM is selected in the dgVoodoo 2 configurator.
-- The amount of *TMPFixMemory* in \<GameDir\>\GameData\Game.mem was set too low for the current resolution.
+- *TMPFixMemory* was set too low.
 - The resolution set in Hype.ini is not natively supported by your system. When the game detects a non-native resolution, it automatically reverts back to 640x480. Since the fix still manipulates the game to run at a higher resolution, this causes some memory corruption and ultimately crashes the game. If you really want to play the game at a non-native resolution, here are instructions for either dgVoodoo or DDrawCompat to "fake" support for other resolutions:
   - **dgVoodoo**: In the dgVoodoo configurator, activate advanced options (*right-click* -> *Show all sections...*). In the tab "DirectXExt", under "Enumerated resolution" after "Extras", enter the custom resolution (e.g. "640x360").
   - **DDrawCompat**: Open DDrawCompat.ini. Uncomment the line starting with "SupportedResolutions" and add the custom resolution (e.g. `SupportedResolutions = native, 640x480, 800x600, 1024x768, 640x360`).
@@ -50,7 +67,7 @@ The most common reasons for this are:
 
 ### The game crashes when starting a new game / loading a game / loading a new area
 Here are some possible causes:
-- The amount of *TMPLevelMemory* in \<GameDir\>\GameData\Game.mem was set too low for the current resolution.
+- *TMPLevelMemory* was set too low.
 - Your localized version of the game is not compatible with the chosen version (A or B) of MaiD3Dvr_bleu.exe that comes with the fix. Please try the other one. If your version of the game does not work with the fix at all (i.e. you managed to run the fix with another localized version, but yours doesn't work with either version A or version B of the fix), please open an issue on GitHub.
 
 ### FMV playback
@@ -61,9 +78,3 @@ The game has a target FPS value hard-coded into its engine, which is normally se
 
 ### What is the PatchDeltaTiming option?
 The game uses so-called delta timing to adjust the game's logic to the actual FPS. This way, the game doesn't slow down when the framerate drops and doesn't speed up when the framerate increases. As mentioned in the previous paragraph, the game does not measures its timing in FPS, but in ms per frame. The delta timing normally works, as long as it does not take more than 80 ms to render a frame (= 12.5 FPS) or less than 16 ms (= 62.5 FPS). Should the framerate drop below 12.5 FPS, the game will slow down, and should it rise above 62.5 FPS, the game will speed up. This option replaces the 16 ms floor by just 1 ms. This should, in theory, allow for framerates of up to 1000 FPS. Since a value of less than 16 ms per frame is only reached if the target FPS is set to more than 66, there is no reason to activate this option if TargetFPS is set to a value less than 67. Since I have no clue if this messes up anything else (e.g. jump physics), this feature is *experimental*.
-
-### The main menu is really hard to navigate! Whenever I press a button it skips one item.
-This happens when you run the game at high framerates! The game was designed to run at 50 FPS. Even at 60 FPS you sometimes skip over a menu item if you just keep the button pressed. The solution is to just tap the button for a short time. At 60 FPS, the menu should still be quite easy to navigate. However, at very high framerates, it can become difficult. Note that the framerate in the main menu is independent of the actual in-game framerate that is determined by the TargetFPS value in Hype.ini. Your DirectX Wrapper should be configured to either limit the framerate or use vSync. As far as I know, dgVoodoo and DDrawCompat have vSync turned on by default (in dgVoodoo it might say it's turned off, but I have yet to find a way to *actually* turn it off for this game).
-
-### I am using Version B of the exe. Certain HUD elements seem to be missing their grey borders.
-This seems to be an issue with this version of the game and is not caused by the widescreen & FPS fix. On the bright side, I personally think that the HUD actually looks better in "centered" mode without these borders... that's why I added the *RemoveHUDBorders* option to the patch (works om both versions of the game, since ersion B still has parts of the grey borders left).

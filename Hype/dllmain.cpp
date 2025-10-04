@@ -15,6 +15,11 @@ uint32_t xRes = 640;
 uint32_t yRes = 480;
 bool doRemoveCDCheck = true;
 bool doMakePortable = true;
+bool fixArrows = true;
+bool doFixDoubleInputs = false;
+float scaleVertCameraSpeed = 1.0f;
+int32_t TMPFixMemory = -1;
+int32_t TMPLevelMemory = -1;
 
 // Variables computed during configuration
 unsigned char GameVersion = 0; // 0 unknown / 1 English Patch / 2 Spanish
@@ -24,6 +29,8 @@ float xScale;
 float yScale;
 uint32_t OffsetBackground;
 uint32_t OffsetLoadBar;
+uint32_t dt_min;
+float dt_ff_by_1000;
 
 // Declare addresses (are set during configuration)
 uint32_t addressGetCurrentDirectoryA;
@@ -56,6 +63,12 @@ uint8_t* addressDrawText;
 uint8_t* addressDrawMap;
 uint8_t* addressDrawMap2;
 uint8_t* addressDrawHUD;
+uint8_t* addressArrowTrajectory;
+uint8_t* addressDoubleInputFix;
+uint8_t* addressFixSnaLoaded; // Here, fix.sna has been loaded into memory
+uint32_t addressMmgModuleBlocksInfo;
+uint8_t* addressTMPFixMemory; // Address where TMPFixMemory is read from game.mem
+uint8_t* addressTMPLevelMemory; // Address where TMPLevelMemory is read from game.mem
 
 // Declare hooks
 SafetyHookMid hook01{};
@@ -65,7 +78,8 @@ SafetyHookMid hook04{};
 SafetyHookMid hook05{};
 SafetyHookMid hook06{};
 SafetyHookMid hook07{};
-
+SafetyHookMid hook08{};
+SafetyHookMid hook09{};
 
 // Helper functions
 template<typename T>
@@ -85,12 +99,44 @@ void PatchBytes(std::uint8_t* address, const char* pattern, unsigned int numByte
 	VirtualProtect((LPVOID)address, numBytes, oldProtect, &oldProtect);
 }
 
+static uint8_t* FindPattern(uintptr_t startAddr,
+	uintptr_t endAddr,
+	const uint8_t* pattern,
+	size_t patternSize)
+{
+	if (!startAddr || !endAddr || !pattern || patternSize == 0)
+		return nullptr;
+
+	if (endAddr < startAddr || (endAddr - startAddr + 1) < patternSize)
+		return nullptr;
+
+	const uint8_t* start = reinterpret_cast<const uint8_t*>(startAddr);
+	const uint8_t* end = reinterpret_cast<const uint8_t*>(endAddr - patternSize + 1);
+
+	for (const uint8_t* cur = start; cur <= end; ++cur)
+	{
+		if (memcmp(cur, pattern, patternSize) == 0)
+			return const_cast<uint8_t*>(cur);
+	}
+
+	return nullptr;
+}
+
+
 // Hooks
 
 // FOV
 void FOVMidHook(SafetyHookContext& ctx) {
 	float NewFOV = 2.0f * atanf(tanf(*reinterpret_cast<float*>(ctx.eax + 0x64) / 2.0f) * ARScale);
 	_asm {fld NewFOV}
+}
+
+// Disappearing arrows at high FPS
+void DisappearingArrowHook(SafetyHookContext& ctx) {
+	// The if condition checks if we are in the first frame after the arrow was shot
+	if (*reinterpret_cast<int*>(*reinterpret_cast<uintptr_t*>(ctx.esp + 0x4) + 0xe0) == 0xb) {
+		*reinterpret_cast<float*>(ctx.esp + 0x1c) = dt_ff_by_1000;
+	}
 }
 
 // Backgrounds and load bar (centered only)
@@ -163,6 +209,28 @@ void MapSizeHook(SafetyHookContext& ctx) {
 	*reinterpret_cast<int*>(ctx.esp + 0x1c) = static_cast<int>(round(static_cast<float>(*reinterpret_cast<int*>(ctx.esp + 0x1c)) * yScale));
 }
 
+/* This hook interrupts the loading process after fix.sna has been loaded into memory and searches "AIFixMemory"
+	for the instruction that determines the vertical camera speed. */
+void CamSpeedHook(SafetyHookContext& ctx) {
+	uintptr_t L1 = *reinterpret_cast<uintptr_t*>(addressMmgModuleBlocksInfo + 0x44);
+	uintptr_t startAddr = *reinterpret_cast<uintptr_t*>(L1 + 0); // Start address of memory section "AIFixMemory"
+	uintptr_t endAddr = *reinterpret_cast<uintptr_t*>(L1 + 4);  // End address of memory section "AIFixMemory"
+
+	static const uint8_t pattern[] = {
+		0x0A, 0xD7, 0x23, 0x3C, 0x00, 0x00, 0x03, 0x0D,
+		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+		0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x02,
+		0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x0B,
+		0x0A, 0xD7, 0xA3, 0x3D
+	};
+
+	uint8_t* hit = FindPattern(startAddr, endAddr, pattern, sizeof(pattern));
+
+	*(reinterpret_cast<float*>(hit)) = 0.01f * scaleVertCameraSpeed;
+	*(reinterpret_cast<float*>(hit+32)) = 0.08f * scaleVertCameraSpeed;
+
+}
+
 // Detect game version and set addresses
 void DetectGame(void)
 {
@@ -220,6 +288,13 @@ void DetectGame(void)
 		addressDrawMap = reinterpret_cast<uint8_t*>(0x4126a0);
 		addressDrawMap2 = reinterpret_cast<uint8_t*>(0x4fa260);
 		addressDrawHUD = reinterpret_cast<uint8_t*>(0x42f180);
+		addressArrowTrajectory = reinterpret_cast<uint8_t*>(0x573fa3);
+		addressDoubleInputFix = reinterpret_cast<uint8_t*>(0x49df32);
+		addressFixSnaLoaded = reinterpret_cast<uint8_t*>(0x404689);
+		addressMmgModuleBlocksInfo = 0x804180;
+		addressTMPFixMemory = reinterpret_cast<uint8_t*>(0x42d0b8);
+		addressTMPLevelMemory = reinterpret_cast<uint8_t*>(0x42d80c);
+
 	}
 	// Spanish exe dated 1999-11-25 19:27:10 UTC
 	else if (!strcmp(pName, "MaiD3Dvr_bleu.exe") && (timestamp == 943558030)) {
@@ -256,6 +331,12 @@ void DetectGame(void)
 		addressDrawMap = reinterpret_cast<uint8_t*>(0x4127d0);
 		addressDrawMap2 = reinterpret_cast<uint8_t*>(0x4fa620);
 		addressDrawHUD = reinterpret_cast<uint8_t*>(0x42f3e0);
+		addressArrowTrajectory = reinterpret_cast<uint8_t*>(0x5743e3);
+		addressDoubleInputFix = reinterpret_cast<uint8_t*>(0x49e022);
+		addressFixSnaLoaded = reinterpret_cast<uint8_t*>(0x404699);
+		addressMmgModuleBlocksInfo = 0x803880;
+		addressTMPFixMemory = reinterpret_cast<uint8_t*>(0x42d2a1);
+		addressTMPLevelMemory = reinterpret_cast<uint8_t*>(0x42da6c);
 	}
 }
 
@@ -278,8 +359,13 @@ void Configuration(void)
 	inipp::get_value(ini.sections["HUD"], "RemoveHUDBorders", removeBorders);
 	inipp::get_value(ini.sections["FPS"], "TargetFPS", FPSValue);
 	inipp::get_value(ini.sections["FPS"], "PatchDeltaTiming", PatchFPSCap);
+	inipp::get_value(ini.sections["FPS"], "DisappearingArrowFix", fixArrows);
+	inipp::get_value(ini.sections["Camera"], "ScaleVertCameraSpeed", scaleVertCameraSpeed);
 	inipp::get_value(ini.sections["Other"], "RemoveCDCheck", doRemoveCDCheck);
 	inipp::get_value(ini.sections["Other"], "MakePortable", doMakePortable);
+	inipp::get_value(ini.sections["Other"], "FixDoubleInputs", doFixDoubleInputs);
+	inipp::get_value(ini.sections["Other"], "TMPFixMemory", TMPFixMemory);
+	inipp::get_value(ini.sections["Other"], "TMPLevelMemory", TMPLevelMemory);
 
 	// Compute auxiliary values
 	xScale = static_cast<float>(xRes) / 640.0f;
@@ -289,6 +375,18 @@ void Configuration(void)
 	OffsetBackground = static_cast<int>(round(0.5f * xRes * (1.0f - 1.0f / ARScale))) * 2;
 	// The load bar is shifted 60/640 = 3/32 from the left edge of the screen.
 	OffsetLoadBar = static_cast<int>(round((0.5f - 3.0f / 32.0f) * xRes * (1.0f - 1.0f / ARScale))) * 2;
+	// Compute minimal value for dt depending on framerate
+	dt_min = 1000 / FPSValue + 1;
+	// If dt_min >= 17, no need for arrow fix
+	if (dt_min >= 17)
+	{
+		fixArrows = false;
+	}
+	else {
+		// Compute dt value for first frame (ff) of arrow trajectory so that it is guaranteed
+		// to leave the hitbox (need to divide by 1000 for arrow trajectory function).
+		dt_ff_by_1000 = (51.0f - 2.0f * dt_min) * 0.001f;
+	}
 
 	skipFix = false;
 }
@@ -349,10 +447,27 @@ void MakePortable(void)
 	PatchBytes(addressStringUbiIni, "/Ubi.ini\x00\x00\x00\x00\x00\x00\x00\x00", 16);
 }
 
+void FixDoubleInputs(void)
+{
+	PatchBytes(addressDoubleInputFix, "\x90\x90\x90\x90\x90", 5);
+}
+
 void ChangeResolution(void)
 {
 	Write(addressResolution + 1, yRes);
 	Write(addressResolution + 6, xRes);
+}
+
+void FixMemoryAllocation(void)
+{
+	if (TMPFixMemory != -1) {
+		PatchBytes(addressTMPFixMemory, "\xb8", 1);
+		Write(addressTMPFixMemory + 1, TMPFixMemory);
+	}
+	if (TMPLevelMemory != -1) {
+		PatchBytes(addressTMPLevelMemory, "\xb8", 1);
+		Write(addressTMPLevelMemory + 1, TMPLevelMemory);
+	}
 }
 
 void ChangeFOV(void)
@@ -361,13 +476,23 @@ void ChangeFOV(void)
 	hook01 = safetyhook::create_mid(addressAdjustCameraToViewport + 3, FOVMidHook); // Create hook
 }
 
+void FixDisappearingArrow(void)
+{
+	hook02 = safetyhook::create_mid(addressArrowTrajectory, DisappearingArrowHook);
+}
+
+void ChangeVertCamSpeed(void)
+{
+	hook03 = safetyhook::create_mid(addressFixSnaLoaded, CamSpeedHook);
+}
+
 void FixHUD(void)
 {
 	// Fix load bar position. LoadBarShift gets subtracted from both xMin and xMax -> Need to hook two instructions.
 	PatchBytes(addressSubtractLoadBarShift1, "\x90\x90\x90\x90\x90\x90", 6); // NOP out original subtraction
-	hook02 = safetyhook::create_mid(addressSubtractLoadBarShift1, SubtractLoadBarShiftHook);
+	hook04 = safetyhook::create_mid(addressSubtractLoadBarShift1, SubtractLoadBarShiftHook);
 	PatchBytes(addressSubtractLoadBarShift2, "\x90\x90\x90\x90\x90\x90", 6); // NOP out original subtraction
-	hook03 = safetyhook::create_mid(addressSubtractLoadBarShift2, SubtractLoadBarShiftHook);
+	hook05 = safetyhook::create_mid(addressSubtractLoadBarShift2, SubtractLoadBarShiftHook);
 	/* Patch coordinate transformation function
 	   Note: This fixes the positioning of
 		(a) the number of arrows (b) the amount of money when talking to a merchant (c) the magic gauge */
@@ -390,22 +515,22 @@ void FixHUD(void)
 	// Fix text on map screen
 	PatchBytes(addressDrawMap + 0x672, "\xb8\x80\x02\x00\x00", 5);
 	// Fix map size
-	hook04 = safetyhook::create_mid(addressDrawMap2, MapSizeHook);
+	hook06 = safetyhook::create_mid(addressDrawMap2, MapSizeHook);
 
 	if (centerHUD) {
 		// Center/un-stretch background images and loading bar
-		hook05 = safetyhook::create_mid(addressCallBlitStretched16b, VignetteHook);
+		hook07 = safetyhook::create_mid(addressCallBlitStretched16b, VignetteHook);
 		// Center/un-stretch several 2D sprite HUD elements
-		hook06 = safetyhook::create_mid(addressDraw2DSpriteWithUV, Draw2DSpriteWithUVHookCentered);
+		hook08 = safetyhook::create_mid(addressDraw2DSpriteWithUV, Draw2DSpriteWithUVHookCentered);
 		// Center/un-stretch text
-		hook07 = safetyhook::create_mid(addressDrawText, UnStretchTextHook);
+		hook09 = safetyhook::create_mid(addressDrawText, UnStretchTextHook);
 
 	}
 	else {
 		// Fix rotated 2D sprites being vertically stretched
-		hook05 = safetyhook::create_mid(addressDraw2DSpriteWithUV, Draw2DSpriteWithUVHookStretched);
+		hook07 = safetyhook::create_mid(addressDraw2DSpriteWithUV, Draw2DSpriteWithUVHookStretched);
 		// Re-stretch magic gauge
-		hook06 = safetyhook::create_mid(addressDrawMagicGauge + 0xc3, MagicGaugeHookStretched);
+		hook08 = safetyhook::create_mid(addressDrawMagicGauge + 0xc3, MagicGaugeHookStretched);
 	}
 
 	if (removeBorders) {
@@ -418,16 +543,26 @@ void Main(void)
 {
 	Init();
 	if (!skipFix) {
+		FixMemoryAllocation();
 		if (doRemoveCDCheck) {
 			RemoveCDCheck();
 		}
 		if (doMakePortable) {
 			MakePortable();
 		}
+		if (doFixDoubleInputs) {
+			FixDoubleInputs();
+		}
 		FixFPS();
 		ChangeResolution();
 		ChangeFOV();
+		if (fixArrows) {
+			FixDisappearingArrow();
+		}
 		FixHUD();
+		if (scaleVertCameraSpeed != 1.0f) {
+			ChangeVertCamSpeed();
+		}
 	}
 }
 
