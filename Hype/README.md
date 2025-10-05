@@ -45,9 +45,6 @@ To use XInput devices, you can do the following:
 
 ## Known issues
 
-### Game asks for CD if no CD drive is detected
-At the moment, the `RemoveCDCheck` option only works when an optical disc drive (either physical or virtual) is detected. If your computer doesn't have a disc drive, simply mount an arbitrary iso image using the built-in Windows functionality.
-
 ### Double inputs during main menu navigation
 This issue also occurs in the vanilla game, but is much more noticeable on high FPS. I have implemented a fix that you can activate by setting `FixDoubleInputs = true` in Hype.ini. Please note that this disables the in-game cheat codes.
 
