@@ -34,14 +34,7 @@ float dt_ff_by_1000;
 
 // Declare addresses (are set during configuration)
 uint32_t addressGetCurrentDirectoryA;
-uint8_t* addressCDCheck1;
-uint8_t* addressCDCheck2;
-uint8_t* addressCDCheck3;
-uint8_t* addressCDCheck4;
-uint8_t* addressCDCheck5;
-uint8_t* addressCDCheck6;
-uint8_t* addressCDCheck7;
-uint8_t* addressCDCheck8;
+uint8_t* addressCDCheck;
 uint8_t* addressAccessUbiIni1;
 uint8_t* addressAccessUbiIni2;
 uint8_t* addressStringUbiIni;
@@ -227,7 +220,7 @@ void CamSpeedHook(SafetyHookContext& ctx) {
 	uint8_t* hit = FindPattern(startAddr, endAddr, pattern, sizeof(pattern));
 
 	*(reinterpret_cast<float*>(hit)) = 0.01f * scaleVertCameraSpeed;
-	*(reinterpret_cast<float*>(hit+32)) = 0.08f * scaleVertCameraSpeed;
+	*(reinterpret_cast<float*>(hit + 32)) = 0.08f * scaleVertCameraSpeed;
 
 }
 
@@ -259,14 +252,7 @@ void DetectGame(void)
 		GameVersion = 1;
 
 		addressGetCurrentDirectoryA = 0x5980c4;
-		addressCDCheck1 = reinterpret_cast<uint8_t*>(0x407b26);
-		addressCDCheck2 = reinterpret_cast<uint8_t*>(0x407bfc);
-		addressCDCheck3 = reinterpret_cast<uint8_t*>(0x407d69);
-		addressCDCheck4 = reinterpret_cast<uint8_t*>(0x407e3f);
-		addressCDCheck5 = reinterpret_cast<uint8_t*>(0x40cb10);
-		addressCDCheck6 = reinterpret_cast<uint8_t*>(0x40f1c7);
-		addressCDCheck7 = reinterpret_cast<uint8_t*>(0x410845);
-		addressCDCheck8 = reinterpret_cast<uint8_t*>(0x41091b);
+		addressCDCheck = reinterpret_cast<uint8_t*>(0x40f21b);
 		addressAccessUbiIni1 = reinterpret_cast<uint8_t*>(0x408411);
 		addressAccessUbiIni2 = reinterpret_cast<uint8_t*>(0x492cd4);
 		addressStringUbiIni = reinterpret_cast<uint8_t*>(0x5b97b0);
@@ -302,14 +288,7 @@ void DetectGame(void)
 		GameVersion = 2;
 
 		addressGetCurrentDirectoryA = 0x5990c8;
-		addressCDCheck1 = reinterpret_cast<uint8_t*>(0x407ba6);
-		addressCDCheck2 = reinterpret_cast<uint8_t*>(0x407c7c);
-		addressCDCheck3 = reinterpret_cast<uint8_t*>(0x407de9);
-		addressCDCheck4 = reinterpret_cast<uint8_t*>(0x407ebf);
-		addressCDCheck5 = reinterpret_cast<uint8_t*>(0x40cc40);
-		addressCDCheck6 = reinterpret_cast<uint8_t*>(0x40f2f7);
-		addressCDCheck7 = reinterpret_cast<uint8_t*>(0x410975);
-		addressCDCheck8 = reinterpret_cast<uint8_t*>(0x410a4b);
+		addressCDCheck = reinterpret_cast<uint8_t*>(0x40f34b);
 		addressAccessUbiIni1 = reinterpret_cast<uint8_t*>(0x408491);
 		addressAccessUbiIni2 = reinterpret_cast<uint8_t*>(0x492e04);
 		addressStringUbiIni = reinterpret_cast<uint8_t*>(0x5ba758);
@@ -410,22 +389,7 @@ void Init(void)
 // Fixes
 void RemoveCDCheck(void)
 {
-	PatchBytes(addressCDCheck1 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck1 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck2 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck2 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck3 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck3 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck4 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck4 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck5 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck5 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck6 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck6 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck7 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck7 + 47, "\x90\x90", 2);
-	PatchBytes(addressCDCheck8 + 30, "\x90\x90", 2);
-	PatchBytes(addressCDCheck8 + 47, "\x90\x90", 2);
+	PatchBytes(addressCDCheck, "\xeb", 1);
 }
 
 void FixFPS(void)
