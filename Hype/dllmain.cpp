@@ -34,7 +34,14 @@ float dt_ff_by_1000;
 
 // Declare addresses (are set during configuration)
 uint32_t addressGetCurrentDirectoryA;
-uint8_t* addressCDCheck;
+uint8_t* addressCDCheckA1;
+uint8_t* addressCDCheckA2;
+uint8_t* addressCDCheckB1;
+uint8_t* addressCDCheckB2;
+uint8_t* addressCDCheckC;
+uint8_t* addressCDCheckD;
+uint8_t* addressCDCheckE1;
+uint8_t* addressCDCheckE2;
 uint8_t* addressAccessUbiIni1;
 uint8_t* addressAccessUbiIni2;
 uint8_t* addressStringUbiIni;
@@ -252,7 +259,14 @@ void DetectGame(void)
 		GameVersion = 1;
 
 		addressGetCurrentDirectoryA = 0x5980c4;
-		addressCDCheck = reinterpret_cast<uint8_t*>(0x40f21b);
+		addressCDCheckA1 = reinterpret_cast<uint8_t*>(0x407b7a);
+		addressCDCheckA2 = reinterpret_cast<uint8_t*>(0x407c50);
+		addressCDCheckB1 = reinterpret_cast<uint8_t*>(0x407dbd);
+		addressCDCheckB2 = reinterpret_cast<uint8_t*>(0x407e93);
+		addressCDCheckC = reinterpret_cast<uint8_t*>(0x40cb64);
+		addressCDCheckD = reinterpret_cast<uint8_t*>(0x40f21b);
+		addressCDCheckE1 = reinterpret_cast<uint8_t*>(0x410899);
+		addressCDCheckE2 = reinterpret_cast<uint8_t*>(0x41096f);
 		addressAccessUbiIni1 = reinterpret_cast<uint8_t*>(0x408411);
 		addressAccessUbiIni2 = reinterpret_cast<uint8_t*>(0x492cd4);
 		addressStringUbiIni = reinterpret_cast<uint8_t*>(0x5b97b0);
@@ -288,7 +302,14 @@ void DetectGame(void)
 		GameVersion = 2;
 
 		addressGetCurrentDirectoryA = 0x5990c8;
-		addressCDCheck = reinterpret_cast<uint8_t*>(0x40f34b);
+		addressCDCheckA1 = reinterpret_cast<uint8_t*>(0x407bfa);
+		addressCDCheckA2 = reinterpret_cast<uint8_t*>(0x407cd0);
+		addressCDCheckB1 = reinterpret_cast<uint8_t*>(0x407e3d);
+		addressCDCheckB2 = reinterpret_cast<uint8_t*>(0x407f13);
+		addressCDCheckC = reinterpret_cast<uint8_t*>(0x40cc94);
+		addressCDCheckD = reinterpret_cast<uint8_t*>(0x40f34b);
+		addressCDCheckE1 = reinterpret_cast<uint8_t*>(0x4109c9);
+		addressCDCheckE2 = reinterpret_cast<uint8_t*>(0x410a9f);
 		addressAccessUbiIni1 = reinterpret_cast<uint8_t*>(0x408491);
 		addressAccessUbiIni2 = reinterpret_cast<uint8_t*>(0x492e04);
 		addressStringUbiIni = reinterpret_cast<uint8_t*>(0x5ba758);
@@ -389,7 +410,14 @@ void Init(void)
 // Fixes
 void RemoveCDCheck(void)
 {
-	PatchBytes(addressCDCheck, "\xeb", 1);
+	PatchBytes(addressCDCheckA1, "\x90\x90\x90\x90\x90\x90", 6);
+	PatchBytes(addressCDCheckA2, "\x90\x90", 2);
+	PatchBytes(addressCDCheckB1, "\x90\x90\x90\x90\x90\x90", 6);
+	PatchBytes(addressCDCheckB2, "\x90\x90", 2);
+	PatchBytes(addressCDCheckC, "\xeb", 1);
+	PatchBytes(addressCDCheckD, "\xeb", 1);
+	PatchBytes(addressCDCheckE1, "\x90\x90\x90\x90\x90\x90", 6);
+	PatchBytes(addressCDCheckE2, "\x90\x90", 2);
 }
 
 void FixFPS(void)
