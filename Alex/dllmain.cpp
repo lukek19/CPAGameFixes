@@ -13,6 +13,7 @@ bool centerHUD = false;
 bool doSkipPentiumIIICheck = true;
 bool doRemoveCDCheck = true;
 bool doMakePortable = true;
+bool doDisableSaveGameSnapshots = false;
 int32_t TMPFixMemory = -1;
 int32_t TMPLevelMemory = -1;
 
@@ -56,6 +57,7 @@ uint8_t* addressSubtractLoadBarShift1;
 uint8_t* addressSubtractLoadBarShift2;
 uint8_t* addressSaveGamePreviewImageWidth;
 uint8_t* addressSaveGamePreviewXCoordinate;
+uint8_t* addressGenerateSaveGamePreview;
 
 // Declare hooks
 SafetyHookMid hook01{};
@@ -230,6 +232,7 @@ void DetectGame(void)
 		addressSubtractLoadBarShift2 = reinterpret_cast<uint8_t*>(0x4f6b8e);
 		addressSaveGamePreviewImageWidth = reinterpret_cast<uint8_t*>(0x412885);
 		addressSaveGamePreviewXCoordinate = reinterpret_cast<uint8_t*>(0x412909);
+		addressGenerateSaveGamePreview = reinterpret_cast<uint8_t*>(0x410443);
 	}
 
 	// Pentium III version, dated 1999-12-22 20:08:10 UTC
@@ -262,6 +265,7 @@ void DetectGame(void)
 		addressSubtractLoadBarShift2 = reinterpret_cast<uint8_t*>(0x552cab);
 		addressSaveGamePreviewImageWidth = reinterpret_cast<uint8_t*>(0x4231d6);
 		addressSaveGamePreviewXCoordinate = reinterpret_cast<uint8_t*>(0x423291);
+		addressGenerateSaveGamePreview = reinterpret_cast<uint8_t*>(0x471b07);
 	}
 }
 
@@ -286,6 +290,7 @@ void Configuration(void)
 	inipp::get_value(ini.sections["Other"], "MakePortable", doMakePortable);
 	inipp::get_value(ini.sections["Other"], "TMPFixMemory", TMPFixMemory);
 	inipp::get_value(ini.sections["Other"], "TMPLevelMemory", TMPLevelMemory);
+	inipp::get_value(ini.sections["Other"], "DisableSaveGameSnapshots", doDisableSaveGameSnapshots);
 
 	// Compute auxiliary values
 	xScale = xRes / 640.0f;
@@ -388,6 +393,11 @@ void FixMemoryAllocation(void)
 		}
 		
 	}
+}
+
+void DisableSaveGameSnapshots(void)
+{
+	PatchBytes(addressGenerateSaveGamePreview, "\x90\x90\x90\x90\x90", 5);
 }
 
 void ChangeResolution(void)
@@ -495,6 +505,9 @@ void Main(void)
 			MakePortable();
 		}
 		FixMemoryAllocation();
+		if (doDisableSaveGameSnapshots) {
+			DisableSaveGameSnapshots();
+		}
 		ChangeResolution();
 		if (ARScale != 1.0f) { // Fixes only needed when AR not 4:3
 			ChangeFOV();
