@@ -1,10 +1,11 @@
 # CPAGameFixes
-Fixes (mainly widescreen, HUD and framerate) for games created with the CPA game engine. Currently, *Hype: The Time Quest* and *Alex Builds His Farm* are supported. A fix for *Laura's Happy Adventures* is planned.
+Fixes (mainly widescreen, HUD and framerate) for games created with the CPA game engine. Currently, *Hype: The Time Quest*, *Alex Builds His Farm* and *Donald Duck: Goin' Quackers* are supported. A fix for *Laura's Happy Adventures* is planned.
 
 ## Installation
 Download the corresponding fix and follow the instructions in the included README.
 * [Hype: The Time Quest](https://github.com/lukek19/CPAGameFixes/releases/tag/HypeV1.2.2)
 * [Alex Builds His Farm](https://github.com/lukek19/CPAGameFixes/releases/tag/AlexV1.1)
+* [Donald Duck: Goin' Quackers](https://github.com/lukek19/CPAGameFixes/releases/tag/DonaldV1.0)
 
 ## Other projects used for the fixes
 * [safetyhook](https://github.com/cursey/safetyhook) for mid-function hooking.
