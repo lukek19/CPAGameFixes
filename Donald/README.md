@@ -55,5 +55,5 @@ The included file GliDX6vf.dll has been patched to fix the game's internal frame
 ### Disable internal frame limiter
 To disable the game's internal frame synchro completely, you may set `DisableInternalSync = true` in Donald.ini. In this case, there is no need to replace the game's original GliDX6vf.dll with the one provided in this fix. Please make sure that you are using an external frame limiter (e.g. dgVoodoo/DDrawCompat's built-in functionality) and limit the framerate to 60 FPS to avoid speed-up and crashes.
 
-### FMV Playback
-I have personally not had any problems with FMV playback. To fix possible issues related to the Indeo 5 Codec, refer to the separate FMV Troubleshooting Guide.
+### FMVs are too small and stretched
+Plese refer to the separate [FMV Troubleshooting Guide](https://github.com/lukek19/CPAGameFixes/blob/main/Donald/FMVTroubleshooting.md).
